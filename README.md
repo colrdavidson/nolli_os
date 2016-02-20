@@ -8,3 +8,5 @@ A simple, light-hearted Bootloader/OS
 1. ```nasm -o boot.bin boot.asm```
 2. ```qemu-system-x86_64 boot.bin```
 3. Sheer joy
+
+![Nolli's Boot Screen](https://github.com/anchovieshat/nolli_os/blob/master/boot.png)
