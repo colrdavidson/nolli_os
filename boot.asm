@@ -2,7 +2,6 @@ org 0x7c00
 bits 16
 
 jmp 0:start
-
 start:
 	xor ax, ax
 	mov ds, ax
@@ -68,7 +67,7 @@ map_mem:
 	mov ax, 0xE820
 	mov edx, 0x534D4150
 	mov ebx, 0 ; Address to start at
-	mov ecx, 24 ; size of buffer to place result (10 bytes * num of entries)
+	mov ecx, 20 ; size of buffer to place result (10 bytes * num of entries)
 	mov [es:di + 20], dword 1
 	int 0x15
 	jc not_support
@@ -89,7 +88,7 @@ boot_msg_size: equ $-boot_msg
 nsupp_msg: db 'NOT SUPPORT', 0xa, 0xd
 nsupp_msg_size: equ $-nsupp_msg
 
-mem_msg: db 'Found my usable memory regions!', 0xa, 0xd
+mem_msg: db 'I can find my marbles!', 0xa, 0xd
 mem_msg_size: equ $-mem_msg
 
 disk_msg: db 'I have fancy disk extensions!', 0xa, 0xd
@@ -142,25 +141,7 @@ flush:
 	jmp main32
 
 main32:
-	call nolli_32
 	jmp 0x8000
-	jmp superbye
-
-nolli_32:
-	mov eax, 0x1B6F094E
-	mov [0xb8860], eax
-	mov eax, 0x1c6C1f6C
-	mov [0xb8864], eax
-	mov eax, 0x00001d69
-	mov [0xb8868], eax
-	mov eax, 0x07320733
-	mov [0xb886C], eax
-	ret
-
-superbye:
-	cli
-	hlt
-	jmp superbye
 
 lala_msg: db 'Look at all this extra space!', 0xa, 0xd
 lala_msg_size: equ $-lala_msg
