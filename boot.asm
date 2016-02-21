@@ -1,4 +1,4 @@
-org 0x7C00
+org 0x7c00
 bits 16
 
 jmp 0:start
@@ -8,7 +8,16 @@ start:
 	mov si, boot_msg
 	call print_str
 
-is_disk:
+	push dx ; Save drive letter
+	call map_mem
+	pop dx ; Gimme mah drive letter back!
+
+	call is_ext
+	call read_sector
+
+	jmp 0x7E00
+
+is_ext:
 	mov ah, 0x41
 	mov bx, 0x55AA
 	int 0x13
@@ -17,7 +26,9 @@ is_disk:
 	mov cx, disk_msg_size
 	mov si, disk_msg
 	call print_str
+	ret
 
+read_sector:
 	mov ah, 0x42
 	mov si, disk_addr_packet
 	int 0x13
@@ -26,8 +37,7 @@ is_disk:
 	mov cx, read_msg_size
 	mov si, read_msg
 	call print_str
-
-	jmp 0x7E00
+	ret
 
 not_support:
 	mov cx, nsupp_msg_size
@@ -47,19 +57,36 @@ print_char:
 	int 0x10
 	ret
 
+map_mem:
+	mov ax, 0xE820
+	mov edx, 0x534D4150
+	mov ebx, 0 ; Address to start at
+	mov ecx, 24 ; size of buffer to place result (10 bytes * num of entries)
+	mov [es:di + 20], dword 1
+	int 0x15
+	jc not_support
+
+	mov cx, mem_msg_size
+	mov si, mem_msg
+	call print_str
+	ret
+
 bye:
 	cli
 	hlt
 	jmp bye
 
 boot_msg: db 'Hello! My name is Nolli', 0xa, 0xd
-boot_msg_size equ $-boot_msg
+boot_msg_size: equ $-boot_msg
 
 nsupp_msg: db 'NOT SUPPORT', 0xa, 0xd
-nsupp_msg_size equ $-nsupp_msg
+nsupp_msg_size: equ $-nsupp_msg
+
+mem_msg: db 'Found my usable memory regions!', 0xa, 0xd
+mem_msg_size: equ $-mem_msg
 
 disk_msg: db 'I have fancy disk extensions!', 0xa, 0xd
-disk_msg_size equ $-disk_msg
+disk_msg_size: equ $-disk_msg
 
 read_msg: db 'Loaded the rest of me!', 0xa, 0xd
 read_msg_size: equ $-read_msg
@@ -67,9 +94,16 @@ read_msg_size: equ $-read_msg
 disk_addr_packet:
 	.size:   db 0x10
 	._rsv:   db 0
-	.blocks: dw 4
+	.blocks: dw 10
 	.dest:   dd 0x7E00
 	.lba:    dq 1
+
+mr_desc:
+	dq 0  ; base addr
+	dq 0  ; length
+	dw 0  ; type of range [1 - OS Memory, 2 - Reserved, 3 - ACPI Reclaimable, 4 - ACPI NVS, n - Reserved]
+.end:
+mr_desc_size: equ (mr_desc.end - mr_desc)
 
 times 510-($-$$) db 0
 dw 0xAA55
@@ -102,7 +136,7 @@ flush:
 
 main32:
 	call nolli_32
-
+	jmp 0x8000
 	jmp superbye
 
 nolli_32:
@@ -152,4 +186,4 @@ gdtr:
 	dw (gdt.end - gdt) - 1
 	dd gdt
 
-times 2560-($-$$) db 0
+times 1024-($-$$) db 0
