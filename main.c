@@ -100,5 +100,5 @@ void clear_screen() {
 void kmain() {
 	clear_screen();
 	puts("Good news everyone!");
-	print("The "); put_name(); puts(" says hello!");
+	print("The "); put_name(); puts(" kernel says hello!");
 }
