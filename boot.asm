@@ -4,6 +4,13 @@ bits 16
 jmp 0:start
 
 start:
+	xor ax, ax
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+	mov sp, 0x7C00
+	mov bp, sp
+
 	mov cx, boot_msg_size
 	mov si, boot_msg
 	call print_str
