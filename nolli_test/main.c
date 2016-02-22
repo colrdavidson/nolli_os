@@ -3,15 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MEMORY_SIZE 32
+#define MEMORY_SIZE 64
 
 typedef unsigned int u32;
 typedef unsigned short u16;
 typedef unsigned char u8;
 typedef enum {false = 0, true = 1} bool;
 
-u32 memory = 0x7314877;
-u32 mega_memory[2] = {0x7314877, 0xE7314877};
+u32 memory[2] = {0x7314877, 0xE7314877};
 
 u32 set_bit(u32 map, u8 nbit) {
 	return map | (1 << nbit);
@@ -25,15 +24,24 @@ bool is_set(u32 map, u8 nbit) {
 	return !!(map & (1 << nbit));
 }
 
-void print_addr(u8 addr) {
-	printf("[%d]", is_set(memory, addr));
+int index_of(u32 i) {
+	return i / (sizeof(u32) * 8);
+}
+
+int offset_from(u32 i) {
+	return i % (sizeof(u32) * 8);
 }
 
 void print_memory() {
+	int tmp = 0;
 	for (int i = 0; i < MEMORY_SIZE; i++) {
-		print_addr(i);
+		int idx = index_of(i);
+		/*if (idx > tmp) { //Wraps line for greater readability
+			puts("");
+			tmp = idx;
+		}*/
+		printf("%d",is_set(memory[idx], offset_from(i)));
 	}
-	puts("");
 }
 
 int alloc(int size) {
@@ -45,13 +53,13 @@ int alloc(int size) {
 	int count = 0;
 	int tmp_size = size;
 	for (int i = 0; i < MEMORY_SIZE; i++) {
-		if (!is_set(memory, i)) {
+		if (!is_set(memory[index_of(i)], offset_from(i))) {
 			count++;
 		} else if (count > 0) {
 			if (count >= size) {
 				for (int j = i - count; j < i; j++) {
 					if (tmp_size > 0) {
-						memory = set_bit(memory, j);
+						memory[index_of(j)] = set_bit(memory[index_of(j)], offset_from(j));
 						tmp_size--;
 					} else {
 						printf("returned address: %d\n", i - count);
@@ -70,7 +78,7 @@ int alloc(int size) {
 		if (count >= size) {
 			for (int j = MEMORY_SIZE - count; j < MEMORY_SIZE; j++) {
 				if (tmp_size > 0) {
-					memory = set_bit(memory, j);
+					memory[index_of(j)] = set_bit(memory[index_of(j)], offset_from(j));
 					tmp_size--;
 				}
 			}
@@ -96,7 +104,7 @@ void free_m(int addr, int size) {
 
 	int count = 0;
 	for (int i = addr; i < (addr + size); i++) {
-		memory = clear_bit(memory, i);
+		memory[index_of(i)] = clear_bit(memory[index_of(i)], offset_from(i));
 	}
 }
 
