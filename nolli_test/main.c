@@ -3,31 +3,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MEMORY_SIZE 8
+#define MEMORY_SIZE 32
 
 typedef unsigned int u32;
 typedef unsigned short u16;
 typedef unsigned char u8;
 typedef enum {false = 0, true = 1} bool;
 
-u8 memory = 0b00110100;
+u32 memory = 0x7314877;
+u32 mega_memory[2] = {0x7314877, 0xE7314877};
 
 u32 set_bit(u32 map, u8 nbit) {
 	return map | (1 << nbit);
 }
 
-void clear_bit(u32 map, u8 nbit) {
-	map = map ^ (1 << nbit);
+u32 clear_bit(u32 map, u8 nbit) {
+	return map ^ (1 << nbit);
 }
 
 bool is_set(u32 map, u8 nbit) {
 	return !!(map & (1 << nbit));
 }
-
-// index_in_level_of(p, n) == (p - _buffer_start) / size_of_level(n)
-// total_size == (num_of_blocks(MAX_LEVELS) * sizeof(leaf))
-// size_of_level(n) == total_size / (1 << n)
-// max_blocks_of_level(n) == (1 << n)
 
 void print_addr(u8 addr) {
 	printf("[%d]", is_set(memory, addr));
@@ -40,8 +36,12 @@ void print_memory() {
 	puts("");
 }
 
-void alloc(int size) {
+int alloc(int size) {
 	printf("alloc: %d\n", size);
+	if (size <= 0) {
+		puts("You can't allocate that!");
+		return -1;
+	}
 	int count = 0;
 	int tmp_size = size;
 	for (int i = 0; i < MEMORY_SIZE; i++) {
@@ -54,8 +54,13 @@ void alloc(int size) {
 						memory = set_bit(memory, j);
 						tmp_size--;
 					} else {
-						return;
+						printf("returned address: %d\n", i - count);
+						return i - count;
 					}
+				}
+				if (tmp_size == 0) {
+					printf("returned address: %d\n", i - count);
+					return i - count;
 				}
 			}
 			count = 0;
@@ -67,17 +72,18 @@ void alloc(int size) {
 				if (tmp_size > 0) {
 					memory = set_bit(memory, j);
 					tmp_size--;
-				} else {
-					return;
 				}
+			}
+			if (tmp_size == 0) {
+				printf("returned address: %d\n", MEMORY_SIZE - count);
+				return MEMORY_SIZE - count;
 			}
 		}
 	}
-	if (tmp_size == 0) {
-		return;
-	}
+
 
 	printf("Ur BORKED, probably allocated too much memory!\n");
+	return -1;
 }
 
 void free_m(int addr, int size) {
@@ -90,7 +96,7 @@ void free_m(int addr, int size) {
 
 	int count = 0;
 	for (int i = addr; i < (addr + size); i++) {
-		clear_bit(memory, i);
+		memory = clear_bit(memory, i);
 	}
 }
 
@@ -102,27 +108,27 @@ int main() {
 	print_memory();
 	puts("");
 
-	alloc(2);
+	int pen = alloc(2);
 	print_memory();
 	puts("");
 
-	alloc(2);
+	int bike = alloc(2);
 	print_memory();
 	puts("");
 
-	alloc(5);
+	int lol = alloc(5);
 	print_memory();
 	puts("");
 
-	alloc(1);
+	int zip = alloc(1);
 	print_memory();
 	puts("");
 
-	alloc(1);
+	int roop = alloc(1);
 	print_memory();
 	puts("");
 
-	/*free_m(pen, 3);
+	free_m(pen, 2);
 	print_memory();
 	puts("");
 
@@ -132,16 +138,15 @@ int main() {
 
 	free_m(lol, 5);
 	print_memory();
-	puts("");*/
+	puts("");
 
-	printf("01110110, bit 0: %d\n", is_set(118, 0));
-	printf("01110110, bit 1: %d\n", is_set(118, 1));
-	printf("01110110, bit 2: %d\n", is_set(118, 2));
-	printf("01110110, bit 3: %d\n", is_set(118, 3));
-	printf("01110110, bit 4: %d\n", is_set(118, 4));
-	printf("01110110, bit 5: %d\n", is_set(118, 5));
-	printf("01110110, bit 6: %d\n", is_set(118, 6));
-	printf("01110110, bit 7: %d\n", is_set(118, 7));
+	free_m(zip, 1);
+	print_memory();
+	puts("");
+
+	free_m(roop, 1);
+	print_memory();
+	puts("");
 
 	return 0;
 }
