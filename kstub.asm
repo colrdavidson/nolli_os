@@ -2,6 +2,7 @@ bits 16
 
 extern kmain
 extern mem_map
+extern mem_map_size
 
 section .text
 start16:
@@ -17,10 +18,11 @@ start16:
 map_mem:
 	mov di, mem_map
 	push di ;store entry point
+	xor bp, bp
 	xor ebx, ebx ; Start at 0
 m_loop:
 	mov edx, 0x534D4150
-	mov ecx, 24
+	mov ecx, 20
 	mov eax, 0xE820
 	int 0x15
 
@@ -34,13 +36,16 @@ m_loop:
 	mov si, loop_msg
 	call t_print_str
 
-	add di, 24
+	add di, 20
+	inc bp
 	jmp m_loop
 
 done:
+	mov [mem_map_size], bp
 	mov cx, mem_msg_size
 	mov si, mem_msg
 	call t_print_str
+
 	jmp to_protected
 
 t_print_str:
@@ -80,7 +85,8 @@ flush:
 	jmp start32
 
 start32:
-	pop edi
+	pop di
+	mov [mem_map], di
 	call kmain
 	jmp superbye
 

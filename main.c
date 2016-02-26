@@ -22,6 +22,7 @@ typedef struct {
 } __attribute__((packed)) mem_map_ptr;
 
 mem_map_ptr *mem_map;
+u16 mem_map_size;
 
 void puts(const char *str);
 void putn(u32);
@@ -42,6 +43,21 @@ void update_cursor() {
 	outb(0x3D5, cur_pos);
 }
 
+void scroll() {
+	if (y_pos >= VGA_HEIGHT) {
+		u32 i;
+		for (i = 0; i < (VGA_HEIGHT - 1) * VGA_WIDTH; i++) {
+			vga_mem[i] = vga_mem[i+80];
+		}
+
+		for (i = (VGA_HEIGHT - 1) * VGA_WIDTH; i < (VGA_HEIGHT * VGA_WIDTH); i++) {
+			vga_mem[i] = (0x07 << 8) | ' ';
+		}
+
+		y_pos = VGA_HEIGHT - 1;
+	}
+}
+
 void putc(char c) {
 	if (c >= ' ') {
 		vga_mem[translate(x_pos, y_pos)] = (0x07 << 8) | c;
@@ -56,6 +72,7 @@ void putc(char c) {
 		y_pos++;
 	}
 
+	scroll();
 	update_cursor();
 }
 
@@ -73,6 +90,7 @@ void putco(char c, char color) {
 		y_pos++;
 	}
 
+	scroll();
 	update_cursor();
 }
 
@@ -141,20 +159,12 @@ void kmain() {
 	puts("Good news everyone!");
 	print("The "); put_name(); puts(" kernel says hello!");
 
-	int entry = 0;
-
-	print("mem_map base: "); putn(mem_map[entry].base); putc('\n');
-	print("mem_map base_hi: "); putn(mem_map[entry].base_hi); putc('\n');
-	print("mem_map size: "); putn(mem_map[entry].size); putc('\n');
-	print("mem_map size_hi: "); putn(mem_map[entry].size_hi); putc('\n');
-	print("mem_map type: "); putn(mem_map[entry].type); putc('\n');
-
-	entry += 24;
-	puts("");
-
-	print("mem_map base: "); putn(mem_map[entry].base); putc('\n');
-	print("mem_map base_hi: "); putn(mem_map[entry].base_hi); putc('\n');
-	print("mem_map size: "); putn(mem_map[entry].size); putc('\n');
-	print("mem_map size_hi: "); putn(mem_map[entry].size_hi); putc('\n');
-	print("mem_map type: "); putn(mem_map[entry].type); putc('\n');
+	for (int entry = 0; entry < mem_map_size; entry++) {
+		print("mem_map base: "); putn(mem_map[entry].base); putc('\n');
+		//print("mem_map base_hi: "); putn(mem_map[entry].base_hi); putc('\n');
+		print("mem_map size: "); putn(mem_map[entry].size); putc('\n');
+		//print("mem_map size_hi: "); putn(mem_map[entry].size_hi); putc('\n');
+		print("mem_map type: "); putn(mem_map[entry].type); putc('\n');
+		putc('\n');
+	}
 }
