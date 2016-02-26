@@ -14,10 +14,6 @@ start:
 	mov si, boot_msg
 	call print_str
 
-	push dx ; Save drive letter
-	call map_mem
-	pop dx ; Gimme mah drive letter back!
-
 	call is_ext
 	call read_sector
 
@@ -63,20 +59,6 @@ print_char:
 	int 0x10
 	ret
 
-map_mem:
-	mov ax, 0xE820
-	mov edx, 0x534D4150
-	mov ebx, 0 ; Address to start at
-	mov ecx, 20 ; size of buffer to place result (10 bytes * num of entries)
-	mov [es:di + 20], dword 1
-	int 0x15
-	jc not_support
-
-	mov cx, mem_msg_size
-	mov si, mem_msg
-	call print_str
-	ret
-
 bye:
 	cli
 	hlt
@@ -88,8 +70,6 @@ boot_msg_size: equ $-boot_msg
 nsupp_msg: db 'NOT SUPPORT', 0xa, 0xd
 nsupp_msg_size: equ $-nsupp_msg
 
-mem_msg: db 'I can find my marbles!', 0xa, 0xd
-mem_msg_size: equ $-mem_msg
 
 disk_msg: db 'I have fancy disk extensions!', 0xa, 0xd
 disk_msg_size: equ $-disk_msg
@@ -100,78 +80,9 @@ read_msg_size: equ $-read_msg
 disk_addr_packet:
 	.size:   db 0x10
 	._rsv:   db 0
-	.blocks: dw 10
+	.blocks: dw 20
 	.dest:   dd 0x7E00
 	.lba:    dq 1
 
-mr_desc:
-	dq 0  ; base addr
-	dq 0  ; length
-	dw 0  ; type of range [1 - OS Memory, 2 - Reserved, 3 - ACPI Reclaimable, 4 - ACPI NVS, n - Reserved]
-.end:
-mr_desc_size: equ (mr_desc.end - mr_desc)
-
 times 510-($-$$) db 0
 dw 0xAA55
-
-a_whole_new_world:
-	mov cx, lala_msg_size
-	mov si, lala_msg
-	call print_str
-	jmp to_protected
-
-	call bye
-
-to_protected:
-	cli
-	lgdt [gdtr]
-	mov eax, cr0
-	or eax, 1 ; set Protection Enable bit
-	mov cr0, eax
-	jmp 0x08:flush
-
-bits 32
-flush:
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-	mov ss, ax
-	jmp main32
-
-main32:
-	jmp 0x8000
-
-lala_msg: db 'Look at all this extra space!', 0xa, 0xd
-lala_msg_size: equ $-lala_msg
-
-gdt:
-.null:
-	dw 0  ; seg limit low
-	dw 0  ; base addr low
-	db 0  ; base addr mid
-	db 0  ; access flags
-	db 0  ; granularity
-	db 0  ; base addr high
-.code:
-	dw 0xFFFF
-	dw 0
-	db 0
-	db 10011010b; 0x9A
-	db 11001111b; 0xCF
-	db 0
-.data:
-	dw 0xFFFF
-	dw 0
-	db 0
-	db 10010010b; 0x92
-	db 11001111b; 0xCF
-	db 0
-.end:
-
-gdtr:
-	dw (gdt.end - gdt) - 1
-	dd gdt
-
-times 1024-($-$$) db 0

@@ -2,12 +2,29 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 
+typedef char i8;
+typedef short i16;
+typedef int i32;
+
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 
 u16 *vga_mem = (u16 *)0xB8000;
 u32 x_pos = 0;
 u32 y_pos = 0;
+
+typedef struct {
+	u32 base;
+	u32 base_hi;
+	u32 size;
+	u32 size_hi;
+	u32 type;
+} __attribute__((packed)) mem_map_ptr;
+
+mem_map_ptr *mem_map;
+
+void puts(const char *str);
+void putn(u32);
 
 void outb(u16 port, u8 value) {
 	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
@@ -59,21 +76,17 @@ void putco(char c, char color) {
 	update_cursor();
 }
 
-void puts(const char *str) {
-	u32 len = 0;
-	while(str[len] != 0) {
-		putc(str[len]);
-		len++;
-	}
-	putc('\n');
-}
-
 void print(const char *str) {
 	u32 len = 0;
 	while(str[len] != 0) {
 		putc(str[len]);
 		len++;
 	}
+}
+
+void puts(const char *str) {
+	print(str);
+	putc('\n');
 }
 
 void put_name() {
@@ -97,8 +110,51 @@ void clear_screen() {
 	y_pos = 0;
 }
 
+void putn(u32 n) {
+	if (n == 0) {
+		putc('0');
+		return;
+	}
+
+	char c[32];
+	i32 acc = n;
+	i32 i = 0;
+	while (acc > 0) {
+		c[i] = '0' + acc%10;
+		acc /= 10;
+		i++;
+	}
+	c[i] = '0';
+
+	char c2[32];
+	c2[i--] = 0;
+	i32 j = 0;
+	while(i >= 0) {
+		c2[i--] = c[j++];
+	}
+
+	print(c2);
+}
+
 void kmain() {
 	clear_screen();
 	puts("Good news everyone!");
 	print("The "); put_name(); puts(" kernel says hello!");
+
+	int entry = 0;
+
+	print("mem_map base: "); putn(mem_map[entry].base); putc('\n');
+	print("mem_map base_hi: "); putn(mem_map[entry].base_hi); putc('\n');
+	print("mem_map size: "); putn(mem_map[entry].size); putc('\n');
+	print("mem_map size_hi: "); putn(mem_map[entry].size_hi); putc('\n');
+	print("mem_map type: "); putn(mem_map[entry].type); putc('\n');
+
+	entry += 24;
+	puts("");
+
+	print("mem_map base: "); putn(mem_map[entry].base); putc('\n');
+	print("mem_map base_hi: "); putn(mem_map[entry].base_hi); putc('\n');
+	print("mem_map size: "); putn(mem_map[entry].size); putc('\n');
+	print("mem_map size_hi: "); putn(mem_map[entry].size_hi); putc('\n');
+	print("mem_map type: "); putn(mem_map[entry].type); putc('\n');
 }

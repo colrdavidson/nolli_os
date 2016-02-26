@@ -1,14 +1,11 @@
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define MEMORY_SIZE 64
 
 typedef unsigned int u32;
 typedef unsigned short u16;
 typedef unsigned char u8;
-typedef enum {false = 0, true = 1} bool;
 
 u32 memory[2] = {0x7314877, 0xE7314877};
 
@@ -20,7 +17,7 @@ u32 clear_bit(u32 map, u8 nbit) {
 	return map ^ (1 << nbit);
 }
 
-bool is_set(u32 map, u8 nbit) {
+int is_set(u32 map, u8 nbit) {
 	return !!(map & (1 << nbit));
 }
 
@@ -128,7 +125,7 @@ int main() {
 	print_memory();
 	puts("");
 
-	int zip = alloc(1);
+	int zip = alloc(4);
 	print_memory();
 	puts("");
 
@@ -148,7 +145,7 @@ int main() {
 	print_memory();
 	puts("");
 
-	free_m(zip, 1);
+	free_m(zip, 4);
 	print_memory();
 	puts("");
 
