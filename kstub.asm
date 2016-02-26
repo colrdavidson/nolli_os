@@ -1,21 +1,21 @@
-bits 32
+bits 16
 
 extern kmain
-;extern mem_map
+extern mem_map
 
 section .text
-a_whole_new_world:
-	;mov cx, lala_msg_size
-	;mov si, lala_msg
-	;call t_print_str
+start16:
+	mov cx, lala_msg_size
+	mov si, lala_msg
+	call t_print_str
 
-	;call map_mem
+	call map_mem
 	jmp to_protected
 
 	call t_bye
 
 map_mem:
-	;mov di, mem_map
+	mov di, mem_map
 	push di ;store entry point
 	xor ebx, ebx ; Start at 0
 m_loop:
@@ -70,7 +70,6 @@ to_protected:
 	jmp 0x8:flush
 
 bits 32
-section .text32
 flush:
 	mov ax, 0x10
 	mov ds, ax
@@ -81,7 +80,7 @@ flush:
 	jmp start32
 
 start32:
-	;pop edi
+	pop edi
 	call kmain
 	jmp superbye
 
