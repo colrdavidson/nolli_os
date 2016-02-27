@@ -12,6 +12,8 @@ void init_serial() {
 	outb(PORT + 3, 0x03);
 	outb(PORT + 2, 0xC7);
 	outb(PORT + 4, 0x0B);
+
+	//sputs("\x1b[33m"); Make serial output orange/yellow
 }
 
 i32 is_transmit_empty() {

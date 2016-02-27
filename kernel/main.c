@@ -10,6 +10,6 @@ void kmain() {
 	puts("Good news everyone!");
 	print("The "); put_name(); puts(" kernel says hello!\n");
 
-	init_mem();
 	print_map();
+	init_mem();
 }

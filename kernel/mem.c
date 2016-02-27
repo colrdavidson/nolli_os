@@ -46,13 +46,20 @@ i32 offset_from(u32 i) {
 
 void init_mem() {
 	MEMORY_SIZE = mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size;
-	print("memory size: 0x"); putn(MEMORY_SIZE, 16); putc('\n');
-	print("map size: 0x"); putn(MEMORY_SIZE / 0x1000, 16); putc('\n');
-	u32 t_mem[MEMORY_SIZE / 0x1000];
-	u32 cur_pos = 0;
 
-	for (i32 i = 0; i < mem_map_size; i++) {
-		print("range max: 0x"); putn(((mem_map[i].base + mem_map[i].size) / 0x1000), 16); putc('\n');
+	u32 i = 0;
+	//find first useable memory region larger than 0x8000
+	for (; i < mem_map_size; i++) {
+		if (mem_map[i].type == 1 && (mem_map[i].size > 0x8000)) {
+			break;
+		}
+	}
+
+	u32 *t_mem = (u32 *)mem_map[i].base;
+	u32 cur_pos = 0;
+	i = 0;
+
+	for (; i < mem_map_size; i++) {
 		for (; cur_pos < ((mem_map[i].base + mem_map[i].size) / 0x1000) - 1; cur_pos++) {
 
 			if (mem_map[i].type == 1) {
@@ -64,6 +71,7 @@ void init_mem() {
 	}
 
 	memory = t_mem;
+	puts("Memory bitmap initialized!");
 }
 
 i32 alloc(u32 size) {

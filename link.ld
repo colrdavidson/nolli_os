@@ -7,4 +7,13 @@ SECTIONS {
 		kstub.o(.text)
 		*(.text)
 	}
+
+	.rodata : {
+		*(.rodata)
+	}
+
+	.bss : {
+		*(COMMON)
+		*(.bss)
+	}
 }
