@@ -1,8 +1,8 @@
 #include "vga.h"
 #include "common.h"
+#include "string.h"
 
 u16 *vga_mem = (u16 *)VGA_MEM_START;
-char bchars[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
 u32 x_pos = 0;
 u32 y_pos = 0;
@@ -102,30 +102,6 @@ void clear_screen() {
 	}
 	x_pos = 0;
 	y_pos = 0;
-}
-
-void itoa(u32 i, u8 base, char *buf) {
-   int pos = 0;
-   int o_pos = 0;
-   int top = 0;
-   char tbuf[32];
-
-   if (i == 0 || base > 16) {
-      buf[0] = '0';
-      buf[1] = '\0';
-      return;
-   }
-
-   while (i != 0) {
-      tbuf[pos] = bchars[i % base];
-      pos++;
-      i /= base;
-   }
-   top = pos--;
-   for (o_pos = 0; o_pos < top; pos--, o_pos++) {
-      buf[o_pos] = tbuf[pos];
-   }
-   buf[o_pos] = 0;
 }
 
 void putn(i32 i, u8 base) {

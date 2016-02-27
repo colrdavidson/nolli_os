@@ -9,8 +9,9 @@ typedef char i8;
 typedef short i16;
 typedef int i32;
 
-static void outb(u16 port, u8 value) {
-	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
-}
+static const char bchars[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+
+u8 inb(u16 port);
+void outb(u16 port, u8 value);
 
 #endif
