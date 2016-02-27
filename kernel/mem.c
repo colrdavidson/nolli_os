@@ -44,6 +44,14 @@ i32 offset_from(u32 i) {
 	return i % (sizeof(u32) * 8);
 }
 
+void print_bitset(u32 idx) {
+	print("set 0x"); putn(idx, 16); print(": ");
+	for (u32 i = 0; i < 32; i++) {
+		putn(is_set(memory[idx], offset_from(i)), 2);
+	}
+	putc('\n');
+}
+
 void init_mem() {
 	MEMORY_SIZE = mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size;
 
@@ -57,9 +65,8 @@ void init_mem() {
 
 	u32 *t_mem = (u32 *)mem_map[i].base;
 	u32 cur_pos = 0;
-	i = 0;
 
-	for (; i < mem_map_size; i++) {
+	for (i = 0; i < mem_map_size; i++) {
 		for (; cur_pos < ((mem_map[i].base + mem_map[i].size) / 0x1000) - 1; cur_pos++) {
 
 			if (mem_map[i].type == 1) {
@@ -72,6 +79,11 @@ void init_mem() {
 
 	memory = t_mem;
 	puts("Memory bitmap initialized!");
+
+	puts("Checking for weird overlaps!");
+	for (i = 0; i < mem_map_size; i++) {
+		print_bitset(mem_map[i].base);
+	}
 }
 
 i32 alloc(u32 size) {
