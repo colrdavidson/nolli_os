@@ -12,5 +12,5 @@ A simple, light-hearted Bootloader/OS
 2. ```qemu-system-x86_64 nolli.bin```
 3. Sheer joy
 
-![Nolli's Boot Screen](boot.png)
-![Nolli's Kernel Boot](kernboot.png)
+![Nolli's Boot Screen](img/boot.png)
+![Nolli's Kernel Boot](img/kernboot.png)
