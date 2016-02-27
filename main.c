@@ -6,6 +6,8 @@ typedef char i8;
 typedef short i16;
 typedef int i32;
 
+char bchars[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 
@@ -25,7 +27,7 @@ mem_map_ptr *mem_map;
 u16 mem_map_size;
 
 void puts(const char *str);
-void putn(u32);
+void putn(i32, u8);
 
 void outb(u16 port, u8 value) {
 	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
@@ -128,43 +130,63 @@ void clear_screen() {
 	y_pos = 0;
 }
 
-void putn(u32 n) {
-	if (n == 0) {
-		putc('0');
-		return;
+void itoa(u32 i, u8 base, char *buf) {
+   int pos = 0;
+   int o_pos = 0;
+   int top = 0;
+   char tbuf[32];
+
+   if (i == 0 || base > 16) {
+      buf[0] = '0';
+      buf[1] = '\0';
+      return;
+   }
+
+   while (i != 0) {
+      tbuf[pos] = bchars[i % base];
+      pos++;
+      i /= base;
+   }
+   top = pos--;
+   for (o_pos = 0; o_pos < top; pos--, o_pos++) {
+      buf[o_pos] = tbuf[pos];
+   }
+   buf[o_pos] = 0;
+}
+
+void putn(i32 i, u8 base) {
+	char tbuf[32];
+	char *buf = tbuf;
+
+	if (base > 16) return;
+	if (i < 0) {
+		*buf++ = '-';
+		i *= -1;
 	}
 
-	char c[32];
-	i32 acc = n;
-	i32 i = 0;
-	while (acc > 0) {
-		c[i] = '0' + acc%10;
-		acc /= 10;
-		i++;
-	}
-	c[i] = '0';
+	itoa((u32)i, base, buf);
+	print(buf);
+}
 
-	char c2[32];
-	c2[i--] = 0;
-	i32 j = 0;
-	while(i >= 0) {
-		c2[i--] = c[j++];
-	}
+void print_map() {
+	for (int entry = 0; entry < mem_map_size; entry++) {
+		print("mem_map["); putn(entry, 10); print("] range: 0x"); putn(mem_map[entry].base, 16); print(" - 0x");
+		putn(mem_map[entry].base + mem_map[entry].size, 16); putc('\n');
 
-	print(c2);
+		u32 type = mem_map[entry].type;
+		print("mem_map["); putn(entry, 10);
+		if (type != 1) { print("] type: Reserved"); putc('\n'); }
+		else { print("] type: Useable"); putc('\n'); }
+
+		putc('\n');
+	}
 }
 
 void kmain() {
 	clear_screen();
 	puts("Good news everyone!");
 	print("The "); put_name(); puts(" kernel says hello!");
+	puts("");
 
-	for (int entry = 0; entry < mem_map_size; entry++) {
-		print("mem_map base: "); putn(mem_map[entry].base); putc('\n');
-		//print("mem_map base_hi: "); putn(mem_map[entry].base_hi); putc('\n');
-		print("mem_map size: "); putn(mem_map[entry].size); putc('\n');
-		//print("mem_map size_hi: "); putn(mem_map[entry].size_hi); putc('\n');
-		print("mem_map type: "); putn(mem_map[entry].type); putc('\n');
-		putc('\n');
-	}
+	print_map();
 }
