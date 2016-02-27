@@ -32,16 +32,13 @@ m_loop:
 	test ebx, ebx
 	jz done
 
-	mov cx, loop_msg_size
-	mov si, loop_msg
-	call t_print_str
-
 	add di, 20
 	inc bp
 	jmp m_loop
 
 done:
 	mov [mem_map_size], bp
+
 	mov cx, mem_msg_size
 	mov si, mem_msg
 	call t_print_str

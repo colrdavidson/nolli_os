@@ -185,8 +185,7 @@ void print_map() {
 void kmain() {
 	clear_screen();
 	puts("Good news everyone!");
-	print("The "); put_name(); puts(" kernel says hello!");
-	puts("");
+	print("The "); put_name(); puts(" kernel says hello!\n");
 
 	print_map();
 }
