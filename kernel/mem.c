@@ -70,23 +70,27 @@ void init_mem() {
 		t_mem[j] = 0xFFFFFFFF;
 	}
 
+	// Clear out the large usable space found.
 	for (j = 0; j < MEMORY_SIZE; j++) {
 		if ((j >= (mem_map[i].base / 0x1000))  && (j < ((mem_map[i].base + mem_map[i].size) / 0x1000))) {
 			t_mem[j] = 0x0;
 		}
 	}
 
-	//print_bitset(i - 1);
-	//putn(i, 16);
-	//print("i: 0x"); putn(i, 16); putc('\n');
+	// Fill the space used by the mem structure itself
+	for (j = (mem_map[i].base / 0x1000); j < (mem_map[i].base / 0x1000) + (MEMORY_SIZE / 0x1000); j++) {
+		t_mem[j] = 0xFFFFFFFF;
+	}
 
 	memory = t_mem;
-	puts("Memory bitmap initialized!");
+	print("Memory bitmap of size: 0x"); putn(MEMORY_SIZE, 16); print(" initialized!\n");
+	print("Memory bitmap of scaled size: 0x"); putn(MEMORY_SIZE / 0x1000, 16); print(" accounted for in map!\n");
 
 	puts("Checking for weird overlaps!");
 	print_bitset(mem_map[i].base / 0x1000 - 1);
 	print_bitset(mem_map[i].base / 0x1000);
-	print_bitset((mem_map[i].base / 0x1000) + 1);
+	print_bitset((mem_map[i].base / 0x1000) + (MEMORY_SIZE / 0x1000) - 1);
+	print_bitset((mem_map[i].base / 0x1000) + (MEMORY_SIZE / 0x1000));
 	print_bitset((mem_map[i+1].base / 0x1000) - 1);
 	print_bitset((mem_map[i+1].base / 0x1000));
 }
