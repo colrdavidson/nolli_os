@@ -14,15 +14,16 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
 	i32 page_table;
 	i32 page;
-} page_info, *page_info_ptr;
+} page_info;
 
-u32 MEMORY_SIZE;
+u32 bitmap_size;
 u32 *memory;
 
 mem_map_ptr *mem_map;
 u16 mem_map_size;
 
 u32 *page_dir = (u32 *)0xFFFFF000;
+u32 first_hole;
 
 u32 set_bit(u32 map, u8 nbit) {
 	return map | (1 << nbit);
@@ -50,112 +51,30 @@ void print_bitset(u32 idx) {
 	putc('\n');
 }
 
-void init_mem() {
-	MEMORY_SIZE = (mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size) / 0x1000;
-
-	u32 i = 0;
-	u32 j = 0;
-	//find first useable memory region larger than MEMORY_SIZE
-	for (; i < mem_map_size; i++) {
-		if (mem_map[i].type == 1 && (mem_map[i].size > MEMORY_SIZE)) {
-			break;
-		}
-	}
-
-	// Plonk bitmap into the first free memory spot large enough
-	u32 *t_mem = (u32 *)mem_map[i].base;
-
-	// Fill the bitmap with 1s
-	for (j = 0; j < MEMORY_SIZE; j++) {
-		t_mem[j] = 0xFFFFFFFF;
-	}
-
-	// Clear out the large usable space found.
-	for (j = 0; j < MEMORY_SIZE; j++) {
-		if ((j >= (mem_map[i].base / 0x1000))  && (j < ((mem_map[i].base + mem_map[i].size) / 0x1000))) {
-			t_mem[j] = 0x0;
-		}
-	}
-
-	// Fill the space used by the mem structure itself
-	for (j = (mem_map[i].base / 0x1000); j < (mem_map[i].base / 0x1000) + (MEMORY_SIZE / 0x1000); j++) {
-		t_mem[j] = 0xFFFFFFFF;
-	}
-
-	memory = t_mem;
-	print("Memory bitmap of size: 0x"); putn(MEMORY_SIZE, 16); print(" initialized!\n");
-	print("Memory bitmap of scaled size: 0x"); putn(MEMORY_SIZE / 0x1000, 16); print(" accounted for in map!\n");
-
-	puts("Checking for weird overlaps!");
-	print_bitset(mem_map[i].base / 0x1000 - 1);
-	print_bitset(mem_map[i].base / 0x1000);
-	print_bitset((mem_map[i].base / 0x1000) + (MEMORY_SIZE / 0x1000) - 1);
-	print_bitset((mem_map[i].base / 0x1000) + (MEMORY_SIZE / 0x1000));
-	print_bitset((mem_map[i+1].base / 0x1000) - 1);
-	print_bitset((mem_map[i+1].base / 0x1000));
-}
-
-i32 alloc(u32 size) {
-	if (size <= 0) {
-		return -1;
-	}
-
-	i32 count = 0;
-	i32 tmp_size = size;
-	for (u32 i = 0; i < MEMORY_SIZE; i++) {
+u32 alloc_p() {
+	for (u32 i = first_hole; i < bitmap_size; i++) {
 		if (!is_set(memory[index_of(i)], offset_from(i))) {
-			count++;
-		} else if (count > 0) {
-			if (count >= (i32)size) {
-				for (u32 j = i - count; j < i; j++) {
-					if (tmp_size > 0) {
-						memory[index_of(j)] = set_bit(memory[index_of(j)], offset_from(j));
-						tmp_size--;
-					} else {
-						return i - count;
-					}
-				}
-				if (tmp_size == 0) {
-					return i - count;
-				}
-			}
-			count = 0;
-		}
-	}
-	if (count > 0) {
-		if (count >= (i32)size) {
-			for (u32 j = MEMORY_SIZE - count; j < MEMORY_SIZE; j++) {
-				if (tmp_size > 0) {
-					memory[index_of(j)] = set_bit(memory[index_of(j)], offset_from(j));
-					tmp_size--;
-				}
-			}
-			if (tmp_size == 0) {
-				return MEMORY_SIZE - count;
-			}
+			memory[index_of(i)] = set_bit(memory[index_of(i)], offset_from(i));
+			first_hole = i;
+			return i * 0x1000;
 		}
 	}
 
-	return -1;
+	return 0;
 }
 
-i32 free(i32 addr, u32 size) {
-
-	if (addr < 0) {
-		return -1;
-	}
-
-	for (u32 i = addr; i < (addr + size); i++) {
+void free(u32 addr, u32 size) {
+	u32 iaddr = addr / 0x1000;
+	for (u32 i = iaddr; i < (iaddr + size); i++) {
 		memory[index_of(i)] = clear_bit(memory[index_of(i)], offset_from(i));
 	}
-	return 0;
 }
 
 page_info vaddr_to_page_idx(u32 addr) {
 	page_info pginf;
 
-	addr &= ~0xFFF;
-	pginf.page_table = addr / 0x400000;
+	addr &= ~0xFFF; // Align to top 20bits of addr
+	pginf.page_table = addr / 0x400000; // Page tables cover 0x400000 bytes in memory
 	pginf.page = (addr % 0x400000) / 0x1000;
 	return pginf;
 }
@@ -175,7 +94,7 @@ i32 map_page(u32 p_addr, u32 v_addr) {
 		}
 	} else {
 		// No table yet, so allocate a page, add into page_dir
-		u32 *new_page_table = (u32 *)alloc(1);
+		u32 *new_page_table = (u32 *)alloc_p();
 		u32 *page_table = (u32 *)(0xFFC00000 + (pginf.page_table * 0x1000));
 
 		page_dir[pginf.page_table] = (u32)new_page_table | 3; // Throw the new page table into the page dir
@@ -220,4 +139,58 @@ void print_map() {
 
 		putc('\n');
 	}
+}
+
+u32 new_pde() {
+	u32 addr = alloc_p();
+	u32 pde = (addr & ~0xFFF) | 3; // Chop off the bottom 12 bits of the address, and then set as present and r/w
+	return pde;
+}
+
+void init_mem() {
+	bitmap_size = (mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size) / 0x1000;
+
+	u32 i = 0;
+	u32 j = 0;
+	//find first useable memory region larger than bitmap_size
+	for (; i < mem_map_size; i++) {
+		if (mem_map[i].type == 1 && (mem_map[i].size > bitmap_size)) {
+			break;
+		}
+	}
+
+	// Plonk bitmap into the first free memory spot large enough
+	u32 *t_mem = (u32 *)mem_map[i].base;
+
+	// Fill the bitmap with 1s
+	for (j = 0; j < bitmap_size; j++) {
+		t_mem[j] = 0xFFFFFFFF;
+	}
+
+	// Clear out the large usable space found.
+	for (j = 0; j < bitmap_size; j++) {
+		if ((j >= (mem_map[i].base / 0x1000))  && (j < ((mem_map[i].base + mem_map[i].size) / 0x1000))) {
+			t_mem[j] = 0x0;
+		}
+	}
+
+	// Fill the space used by the mem structure itself
+	for (j = (mem_map[i].base / 0x1000); j < (mem_map[i].base / 0x1000) + (bitmap_size / 0x1000); j++) {
+		t_mem[j] = 0xFFFFFFFF;
+	}
+
+	first_hole = j;
+	memory = t_mem;
+
+	puts("initialized physical memory bitmap!");
+
+	u32 *p_page_dir = (u32 *)alloc_p();
+	for (u32 i = 0; i < 1024; i++) {
+		p_page_dir[i] = new_pde();
+	}
+
+	// Make this a recursive page table, so I can poke at it from virtual space
+	p_page_dir[1023] = ((u32)p_page_dir & ~0xFFF) | 3;
+
+	puts("generated page directory!");
 }
