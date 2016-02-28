@@ -104,16 +104,12 @@ void clear_screen() {
 	y_pos = 0;
 }
 
-void putn(i32 i, u8 base) {
+void putn(u32 i, u8 base) {
 	char tbuf[32];
 	char *buf = tbuf;
 
 	if (base > 16) return;
-	if (i < 0) {
-		*buf++ = '-';
-		i *= -1;
-	}
 
-	itoa((u32)i, base, buf);
+	itoa(i, base, buf);
 	print(buf);
 }

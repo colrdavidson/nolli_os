@@ -46,44 +46,49 @@ i32 offset_from(u32 i) {
 
 void print_bitset(u32 idx) {
 	print("set 0x"); putn(idx, 16); print(": ");
-	for (u32 i = 0; i < 32; i++) {
-		putn(is_set(memory[idx], offset_from(i)), 2);
-	}
+	putn(memory[idx], 2);
 	putc('\n');
 }
 
 void init_mem() {
-	MEMORY_SIZE = mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size;
+	MEMORY_SIZE = (mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size) / 0x1000;
 
 	u32 i = 0;
-	//find first useable memory region larger than 0x8000
+	u32 j = 0;
+	//find first useable memory region larger than MEMORY_SIZE
 	for (; i < mem_map_size; i++) {
-		if (mem_map[i].type == 1 && (mem_map[i].size > 0x8000)) {
+		if (mem_map[i].type == 1 && (mem_map[i].size > MEMORY_SIZE)) {
 			break;
 		}
 	}
 
+	// Plonk bitmap into the first free memory spot large enough
 	u32 *t_mem = (u32 *)mem_map[i].base;
-	u32 cur_pos = 0;
 
-	for (i = 0; i < mem_map_size; i++) {
-		for (; cur_pos < ((mem_map[i].base + mem_map[i].size) / 0x1000) - 1; cur_pos++) {
+	// Fill the bitmap with 1s
+	for (j = 0; j < MEMORY_SIZE; j++) {
+		t_mem[j] = 0xFFFFFFFF;
+	}
 
-			if (mem_map[i].type == 1) {
-				t_mem[index_of(cur_pos)] = clear_bit(t_mem[index_of(cur_pos)], offset_from(cur_pos));
-			} else {
-				t_mem[index_of(cur_pos)] = set_bit(t_mem[index_of(cur_pos)], offset_from(cur_pos));
-			}
+	for (j = 0; j < MEMORY_SIZE; j++) {
+		if ((j >= (mem_map[i].base / 0x1000))  && (j < ((mem_map[i].base + mem_map[i].size) / 0x1000))) {
+			t_mem[j] = 0x0;
 		}
 	}
+
+	//print_bitset(i - 1);
+	//putn(i, 16);
+	//print("i: 0x"); putn(i, 16); putc('\n');
 
 	memory = t_mem;
 	puts("Memory bitmap initialized!");
 
 	puts("Checking for weird overlaps!");
-	for (i = 0; i < mem_map_size; i++) {
-		print_bitset(mem_map[i].base);
-	}
+	print_bitset(mem_map[i].base / 0x1000 - 1);
+	print_bitset(mem_map[i].base / 0x1000);
+	print_bitset((mem_map[i].base / 0x1000) + 1);
+	print_bitset((mem_map[i+1].base / 0x1000) - 1);
+	print_bitset((mem_map[i+1].base / 0x1000));
 }
 
 i32 alloc(u32 size) {
