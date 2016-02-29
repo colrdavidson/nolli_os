@@ -21,6 +21,9 @@ u16 mem_map_size;
 u32 *page_dir;
 u32 first_hole;
 
+extern u32 _kernel_start;
+extern u32 _kernel_end;
+
 u32 set_bit(u32 map, u8 nbit) {
 	return map | (1 << nbit);
 }
@@ -95,6 +98,15 @@ void map_page(u32 *cur_page_dir, u32 v_addr, u32 *page) {
 	page_table[pt_idx] = ((u32)page & ~0xFFF) | 3;
 }
 
+void unmap_page(u32 *cur_page_dir, u32 v_addr) {
+	u32 pd_idx = v_addr >> 21;
+	u32 pt_idx = (v_addr << 10) >> 22;
+	explode_if(((v_addr << 20) >> 20) != 0);
+
+	u32 *page_table = (u32 *)((cur_page_dir[pd_idx] >> 2) << 2);
+	page_table[pt_idx] = 2;
+}
+
 void init_mem() {
 	memory_size = (mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size);
 	bitmap_size = memory_size / 0x1000;
@@ -141,19 +153,43 @@ void init_mem() {
 	// Make this a recursive page table, so I can poke at it from virtual addr space
 	page_dir[1023] = ((u32)page_dir & ~0xFFF) | 1;
 
+	// Identity map the everything
 	i = 0;
 	while(i < memory_size) {
 		map_page(page_dir, i, (u32 *)i);
 		i += 0x1000;
 	}
-	puts("generated page directory!");
-	//print("page_dir: 0x"); putn((u32)page_dir, 16); putc('\n');
+	puts("Generated page directory!");
 
+	// Enable paging
 	u32 cr0;
 	asm volatile("mov %0, %%cr3" :: "r"(page_dir));
 	asm volatile("mov %%cr0, %0": "=r"(cr0));
 	cr0 |= 1 << 31;
 	asm volatile("mov %0, %%cr0":: "r"(cr0));
 
-	puts("initialized paging!");
+	puts("Initialized paging!");
+
+	// Remap the kernel to the higher half
+	i = _kernel_start;
+	j = 0xC0000000;
+	while (i < _kernel_end) {
+		map_page(page_dir, j, (u32 *)i);
+		unmap_page(page_dir, i);
+		i += 0x1000;
+		j += 0x1000;
+	}
+
+	// Move ACPI to 1 MB below the kernel
+	// Also, freed the 0th page, so null works
+	i = 0;
+	j = 0xBFC18000; // Kernel space - 1 MB
+	while (i < 0x3E8000) {
+		map_page(page_dir, j, (u32 *)i);
+		unmap_page(page_dir, i);
+		i += 0x1000;
+		j += 0x1000;
+	}
+
+	puts("Remapped the kernel and ACPI!");
 }

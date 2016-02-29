@@ -5,6 +5,7 @@ SECTIONS {
 	. = 0x7E00;
 	.text : {
 		kstub.o(.text)
+		_kernel_start = .;
 		*(.text)
 	}
 
@@ -16,4 +17,6 @@ SECTIONS {
 		*(COMMON)
 		*(.bss)
 	}
+
+	_kernel_end = .;
 }
