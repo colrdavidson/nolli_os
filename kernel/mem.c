@@ -22,7 +22,7 @@ u32 *memory;
 mem_map_ptr *mem_map;
 u16 mem_map_size;
 
-u32 *page_dir = (u32 *)0xFFFFF000;
+u32 *p_page_dir;
 u32 first_hole;
 
 u32 set_bit(u32 map, u8 nbit) {
@@ -70,63 +70,6 @@ void free(u32 addr, u32 size) {
 	}
 }
 
-page_info vaddr_to_page_idx(u32 addr) {
-	page_info pginf;
-
-	addr &= ~0xFFF; // Align to top 20bits of addr
-	pginf.page_table = addr / 0x400000; // Page tables cover 0x400000 bytes in memory
-	pginf.page = (addr % 0x400000) / 0x1000;
-	return pginf;
-}
-
-i32 map_page(u32 p_addr, u32 v_addr) {
-	page_info pginf = vaddr_to_page_idx(v_addr);
-
-	if (page_dir[pginf.page_table] & 1) {
-		// table exists
-		u32 *page_table = (u32 *)(0xFFC00000 + (pginf.page_table * 0x1000)); // virt addr of page table
-		if (!page_table[pginf.page] & 1) {
-			// page not yet mapped
-			page_table[pginf.page] = p_addr | 3;
-		} else {
-			// page already mapped
-			return -1;
-		}
-	} else {
-		// No table yet, so allocate a page, add into page_dir
-		u32 *new_page_table = (u32 *)alloc_p();
-		u32 *page_table = (u32 *)(0xFFC00000 + (pginf.page_table * 0x1000));
-
-		page_dir[pginf.page_table] = (u32)new_page_table | 3; // Throw the new page table into the page dir
-		page_table[pginf.page] = p_addr | 3;
-	}
-	return 1;
-}
-
-void unmap_page(u32 v_addr) {
-	page_info pginf = vaddr_to_page_idx(v_addr);
-
-	if (page_dir[pginf.page_table] & 1) {
-		i32 i;
-		u32 *page_table = (u32 *)(0xFFC00000 + (pginf.page_table * 0x1000));
-		if (page_table[pginf.page] & 1) {
-			// page is mapped, unmap it
-			page_table[pginf.page] = 2; // r/w, not present
-		}
-
-		// Look for more present PTEs
-		for (i = 0; i < 1024; i++) {
-			if (page_table[i] & 1) break;
-		}
-
-		// If none, free space allocated to the page table, removing mappings
-		if (i == 1024) {
-			free(page_dir[pginf.page_table] & 0xFFFFF000, 1);
-			page_dir[pginf.page_table] = 2;
-		}
-	}
-}
-
 void print_map() {
 	for (int entry = 0; entry < mem_map_size; entry++) {
 		print("mem_map["); putn(entry, 10); print("] range: 0x"); putn(mem_map[entry].base, 16); print(" - 0x");
@@ -145,6 +88,13 @@ u32 new_pde() {
 	u32 addr = alloc_p();
 	u32 pde = (addr & ~0xFFF) | 3; // Chop off the bottom 12 bits of the address, and then set as present and r/w
 	return pde;
+}
+
+u32 new_pte() {
+	u32 addr = alloc_p();
+	u32 pte = (addr & ~0xFFF) | 3; // Chop off the bottom 12 bits of the address, and then set as present and r/w
+	//print("new page at: 0x"); putn(addr & ~0xFFF, 16); putc('\n');
+	return pte;
 }
 
 void init_mem() {
@@ -184,13 +134,28 @@ void init_mem() {
 
 	puts("initialized physical memory bitmap!");
 
-	u32 *p_page_dir = (u32 *)alloc_p();
-	for (u32 i = 0; i < 1024; i++) {
+	p_page_dir = (u32 *)alloc_p();
+	for (u32 i = 0; i < 1023; i++) {
 		p_page_dir[i] = new_pde();
 	}
 
-	// Make this a recursive page table, so I can poke at it from virtual space
-	p_page_dir[1023] = ((u32)p_page_dir & ~0xFFF) | 3;
 
+	// Make this a recursive page table, so I can poke at it from virtual addr space
+	p_page_dir[1023] = ((u32)p_page_dir & ~0xFFF) | 1;
+
+	for (u32 i = 0; i < 1024; i++) {
+		//print("physical page dir entry [0x"); putn(i, 16); print("]: 0x"); putn(p_page_dir[i], 16); putc('\n');
+		u32 *addr = (u32 *)p_page_dir[i];
+		addr = (u32 *)new_pte();
+	}
 	puts("generated page directory!");
+	//print("p_page_dir: 0x"); putn(p_page_dir, 16); putc('\n');
+
+	u32 cr0;
+	asm volatile("mov %0, %%cr3" :: "r"(p_page_dir));
+	asm volatile("mov %%cr0, %0": "=r"(cr0));
+	cr0 |= 1 << 31;
+	asm volatile("mov %0, %%cr0":: "r"(cr0));
+
+	//puts("initialized paging!");
 }
