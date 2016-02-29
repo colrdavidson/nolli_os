@@ -159,7 +159,6 @@ void init_mem() {
 		map_page(page_dir, i, (u32 *)i);
 		i += 0x1000;
 	}
-	puts("Generated page directory!");
 
 	// Enable paging
 	u32 cr0;
@@ -167,8 +166,6 @@ void init_mem() {
 	asm volatile("mov %%cr0, %0": "=r"(cr0));
 	cr0 |= 1 << 31;
 	asm volatile("mov %0, %%cr0":: "r"(cr0));
-
-	puts("Initialized paging!");
 
 	// Remap the kernel to the higher half
 	i = _kernel_start;
@@ -191,5 +188,5 @@ void init_mem() {
 		j += 0x1000;
 	}
 
-	puts("Remapped the kernel and ACPI!");
+	puts("Set up paging and remapped the kernel!");
 }

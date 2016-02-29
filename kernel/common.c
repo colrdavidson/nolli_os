@@ -13,6 +13,6 @@ u8 inb(u16 port) {
 
 void explode_if(u8 invalid) {
 	if (invalid) {
-		puts("OH NOES!");
+		puts("[BOOM] OH NOES!");
 	}
 }

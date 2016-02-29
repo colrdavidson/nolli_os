@@ -8,8 +8,7 @@ void kmain() {
 
 	clear_screen();
 	puts("Good news everyone!");
-	print("The "); put_name(); puts(" kernel says hello!\n");
+	print("The "); put_name(); puts(" kernel says hello!");
 
-	print_map();
 	init_mem();
 }
