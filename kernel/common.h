@@ -13,5 +13,6 @@ static const char bchars[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C
 
 u8 inb(u16 port);
 void outb(u16 port, u8 value);
+void explode_if(u8 valid);
 
 #endif

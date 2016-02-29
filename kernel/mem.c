@@ -11,18 +11,14 @@ typedef struct __attribute__((packed)) {
 	u32 type;
 } mem_map_ptr;
 
-typedef struct __attribute__((packed)) {
-	i32 page_table;
-	i32 page;
-} page_info;
-
 u32 bitmap_size;
+u32 memory_size;
 u32 *memory;
 
 mem_map_ptr *mem_map;
 u16 mem_map_size;
 
-u32 *p_page_dir;
+u32 *page_dir;
 u32 first_hole;
 
 u32 set_bit(u32 map, u8 nbit) {
@@ -90,15 +86,18 @@ u32 new_pde() {
 	return pde;
 }
 
-u32 new_pte() {
-	u32 addr = alloc_p();
-	u32 pte = (addr & ~0xFFF) | 3; // Chop off the bottom 12 bits of the address, and then set as present and r/w
-	//print("new page at: 0x"); putn(addr & ~0xFFF, 16); putc('\n');
-	return pte;
+void map_page(u32 *cur_page_dir, u32 v_addr, u32 *page) {
+	u32 pd_idx = v_addr >> 21;
+	u32 pt_idx = (v_addr << 10) >> 22;
+	explode_if(((v_addr << 20) >> 20) != 0);
+
+	u32 *page_table = (u32 *)((cur_page_dir[pd_idx] >> 2) << 2);
+	page_table[pt_idx] = ((u32)page & ~0xFFF) | 3;
 }
 
 void init_mem() {
-	bitmap_size = (mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size) / 0x1000;
+	memory_size = (mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size);
+	bitmap_size = memory_size / 0x1000;
 
 	u32 i = 0;
 	u32 j = 0;
@@ -132,30 +131,29 @@ void init_mem() {
 	first_hole = j;
 	memory = t_mem;
 
-	puts("initialized physical memory bitmap!");
+	//puts("initialized physical memory bitmap!");
 
-	p_page_dir = (u32 *)alloc_p();
+	page_dir = (u32 *)alloc_p();
 	for (u32 i = 0; i < 1023; i++) {
-		p_page_dir[i] = new_pde();
+		page_dir[i] = new_pde();
 	}
-
 
 	// Make this a recursive page table, so I can poke at it from virtual addr space
-	p_page_dir[1023] = ((u32)p_page_dir & ~0xFFF) | 1;
+	page_dir[1023] = ((u32)page_dir & ~0xFFF) | 1;
 
-	for (u32 i = 0; i < 1024; i++) {
-		//print("physical page dir entry [0x"); putn(i, 16); print("]: 0x"); putn(p_page_dir[i], 16); putc('\n');
-		u32 *addr = (u32 *)p_page_dir[i];
-		addr = (u32 *)new_pte();
+	i = 0;
+	while(i < memory_size) {
+		map_page(page_dir, i, (u32 *)i);
+		i += 0x1000;
 	}
 	puts("generated page directory!");
-	//print("p_page_dir: 0x"); putn(p_page_dir, 16); putc('\n');
+	//print("page_dir: 0x"); putn((u32)page_dir, 16); putc('\n');
 
 	u32 cr0;
-	asm volatile("mov %0, %%cr3" :: "r"(p_page_dir));
+	asm volatile("mov %0, %%cr3" :: "r"(page_dir));
 	asm volatile("mov %%cr0, %0": "=r"(cr0));
 	cr0 |= 1 << 31;
 	asm volatile("mov %0, %%cr0":: "r"(cr0));
 
-	//puts("initialized paging!");
+	puts("initialized paging!");
 }
