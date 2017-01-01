@@ -9,10 +9,29 @@ typedef char i8;
 typedef short i16;
 typedef int i32;
 
+typedef u8 bool;
+#define true 1
+#define false 0
+
 static const char bchars[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
-u8 inb(u16 port);
-void outb(u16 port, u8 value);
-void explode_if(u8 valid);
+void outb(u16 port, u8 value) {
+	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
+}
+
+u8 inb(u16 port) {
+	u8 rv;
+	asm volatile ("inb %1, %0" : "=a" (rv) : "dN" (port));
+	return rv;
+}
+
+#include "vga.h"
+
+void explode_if(u8 invalid) {
+	if (invalid) {
+		puts("[BOOM] OH NOES!");
+		asm ("hlt");
+	}
+}
 
 #endif

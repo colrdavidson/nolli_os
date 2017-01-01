@@ -84,6 +84,8 @@ flush:
 start32:
 	pop di
 	mov [mem_map], di
+    mov esp, kernel_stack + kstack_size
+
 	call kmain
 	jmp superbye
 
@@ -133,3 +135,11 @@ gdt:
 gdtr:
 	dw (gdt.end - gdt) - 1
 	dd gdt
+
+kstack_size equ 8192
+
+section .bss
+
+align 8
+kernel_stack:
+	resb kstack_size

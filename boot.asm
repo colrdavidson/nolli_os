@@ -70,7 +70,6 @@ boot_msg_size: equ $-boot_msg
 nsupp_msg: db 'NOT SUPPORT', 0xa, 0xd
 nsupp_msg_size: equ $-nsupp_msg
 
-
 disk_msg: db 'I have fancy disk extensions!', 0xa, 0xd
 disk_msg_size: equ $-disk_msg
 
