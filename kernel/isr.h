@@ -3,7 +3,7 @@
 
 #include "common.h"
 
-typedef struct registers {
+typedef struct __attribute__((packed)) {
 	u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
 	u32 int_no, err_code;
 } registers_t;
@@ -21,8 +21,25 @@ char to_upper(char c) {
 }
 
 void isr_handler(registers_t reg) {
-	printf("Got interrupt: %p\n", reg.int_no);
-	printf("error code: %d\n", reg.err_code);
+	printf("Got interrupt %p: ", reg.int_no);
+
+	if (reg.int_no == 0xE) {
+		printf("page fault!\n");
+		u8 fault_type = (reg.err_code << 4) >> 4;
+
+		if (fault_type & 0b0001) {
+			printf("page not present\n");
+		} else {
+			printf("page protection violation\n");
+		}
+
+		if (fault_type & 0b0010) {
+			printf("fault on write\n");
+		} else {
+			printf("fault on read\n");
+		}
+		asm ("hlt");
+	}
 }
 
 void irq_handler(registers_t reg) {

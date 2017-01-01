@@ -1,14 +1,19 @@
 OUTPUT_FORMAT("binary")
 OUTPUT_ARCH(i8086)
 
+ENTRY(start16)
+
 SECTIONS {
 	_kernel_start = .;
 
 	. = 0x7E00;
 
 	.text : {
-		kstub.o(.text)
 		*(.text)
+	}
+
+	.data : {
+		*(.data)
 	}
 
 	.rodata : {
@@ -16,7 +21,6 @@ SECTIONS {
 	}
 
 	.bss : {
-		*(COMMON)
 		*(.bss)
 	}
 

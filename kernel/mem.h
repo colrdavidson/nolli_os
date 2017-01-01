@@ -49,20 +49,56 @@ void print_bitset(u32 idx) {
 	printf("set %p: %b\n", idx, memory[idx]);
 }
 
-u32 alloc_p() {
+void *alloc_p() {
 	for (u32 i = first_hole; i < bitmap_size; i++) {
 		if (!is_set(memory[index_of(i)], offset_from(i))) {
 			memory[index_of(i)] = set_bit(memory[index_of(i)], offset_from(i));
 			first_hole = i;
-			return i * 0x1000;
+			return (void *)(i * 0x1000);
 		}
 	}
 
-	return 0;
+	return NULL;
 }
 
-void free(u32 addr, u32 size) {
-	u32 iaddr = addr / 0x1000;
+void *alloc_pages(u32 pages) {
+	u32 page_count = 0;
+	u32 run_start = 0;
+
+	for (u32 i = first_hole; i < bitmap_size; i++) {
+		if (page_count == 0) {
+			if (!is_set(memory[index_of(i)], offset_from(i))) {
+				page_count++;
+				run_start = i;
+			}
+		} else {
+			if (!is_set(memory[index_of(i)], offset_from(i))) {
+				page_count++;
+			} else {
+				page_count = 0;
+			}
+		}
+
+		if (page_count == pages) {
+			first_hole = run_start;
+			for (u32 j = run_start; j <= i; j++) {
+				memory[index_of(j)] = set_bit(memory[index_of(j)], offset_from(j));
+			}
+			return (void *)(run_start * 0x10);
+		}
+	}
+
+	return NULL;
+}
+
+void *malloc(u32 size) {
+	u32 pages = (size / 0x1000) + 1;
+	void *addr = alloc_pages(pages);
+	return addr;
+}
+
+void free(void *addr, u32 size) {
+	u32 iaddr = (u32)addr / 0x1000;
 	for (u32 i = iaddr; i < (iaddr + size); i++) {
 		memory[index_of(i)] = clear_bit(memory[index_of(i)], offset_from(i));
 	}
@@ -84,18 +120,18 @@ void print_map() {
 }
 
 u32 new_pde() {
-	u32 addr = alloc_p();
+	u32 addr = (u32)alloc_p();
 	u32 pde = (addr & ~0xFFF) | 3; // Chop off the bottom 12 bits of the address, and then set as present and r/w
 	return pde;
 }
 
-void map_page(u32 *cur_page_dir, u32 v_addr, u32 *page) {
+void map_page(u32 *cur_page_dir, u32 v_addr, u32 p_addr) {
 	u32 pd_idx = v_addr >> 21;
 	u32 pt_idx = (v_addr << 10) >> 22;
 	explode_if(((v_addr << 20) >> 20) != 0);
 
 	u32 *page_table = (u32 *)((cur_page_dir[pd_idx] >> 2) << 2);
-	page_table[pt_idx] = ((u32)page & ~0xFFF) | 3;
+	page_table[pt_idx] = (p_addr & ~0xFFF) | 3;
 }
 
 void unmap_page(u32 *cur_page_dir, u32 v_addr) {
@@ -148,7 +184,6 @@ void init_mem() {
 	page_dir = (u32 *)alloc_p();
 	for (u32 t = 0; t < 1023; t++) {
 		page_dir[t] = new_pde();
-	//	printf("%x\n", page_dir[t]);
 	}
 
 	// Make this a recursive page table, so I can poke at it from virtual addr space
@@ -156,9 +191,9 @@ void init_mem() {
 
 	// Identity map the everything
 	i = 0;
-	while(i < memory_size) {
-		map_page(page_dir, i, (u32 *)i);
-		i += 0x1000;
+	for (; i < (memory_size / 0x1000); i++) {
+		u32 addr = i * 0x1000;
+		map_page(page_dir, addr, addr);
 	}
 
 	// Enable paging
@@ -168,15 +203,14 @@ void init_mem() {
 	cr0 |= 1 << 31;
 	asm volatile("mov %0, %%cr0":: "r"(cr0));
 
-	u32 kstart = _kernel_start;
-	u32 kend = _kernel_end;
-	u32 ksize = kend - kstart;
+	u32 kstart = 0x7000;
+	u32 ksize = 0xD00;
 
 	// Remap the kernel to the higher half
 	i = kstart;
 	j = 0xC0000000;
 	while (i < ksize) {
-		map_page(page_dir, j, (u32 *)i);
+		map_page(page_dir, j, i);
 		unmap_page(page_dir, i);
 		i += 0x1000;
 		j += 0x1000;
@@ -187,13 +221,13 @@ void init_mem() {
 	i = 0;
 	j = 0xBFC18000; // Kernel space - 1 MB
 	while (i < 0x3E8000) {
-		map_page(page_dir, j, (u32 *)i);
+		map_page(page_dir, j, i);
 		unmap_page(page_dir, i);
 		i += 0x1000;
 		j += 0x1000;
 	}
 
-	puts("Set up paging and remapped the kernel!");
+	puts("Set up paging and remapped the kernel!\n");
 }
 
 #endif

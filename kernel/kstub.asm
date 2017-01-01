@@ -5,6 +5,7 @@ extern mem_map
 extern mem_map_size
 
 section .text
+global start16
 start16:
 	mov cx, lala_msg_size
 	mov si, lala_msg
@@ -137,6 +138,8 @@ gdtr:
 	dd gdt
 
 kstack_size equ 8192
+
+section .data
 
 section .bss
 

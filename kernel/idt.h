@@ -146,6 +146,8 @@ void init_idt() {
     // Enable Keyboard
 	outb(0x21, 0xfd);
 	outb(0xA1, 0xff);
+
+	puts("enabled the keyboard\n");
 }
 
 #endif
