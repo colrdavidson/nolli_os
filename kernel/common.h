@@ -17,7 +17,7 @@ typedef u8 bool;
 static const char bchars[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
 void outb(u16 port, u8 value) {
-	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
+	asm ("outb %1, %0" : : "dN" (port), "a" (value));
 }
 
 void out_16(u16 port, u16 value) {
@@ -25,7 +25,7 @@ void out_16(u16 port, u16 value) {
 }
 
 void out_32(u16 port, u32 value) {
-	asm volatile ("outl %1, %0" : : "dN" (port), "a" (value));
+	asm volatile ("outl %%eax, %%dx" : : "dN" (port), "a" (value));
 }
 
 u8 inb(u16 port) {
@@ -34,15 +34,15 @@ u8 inb(u16 port) {
 	return rv;
 }
 
-u8 in_16(u16 port) {
+u16 in_16(u16 port) {
 	u16 rv;
-	asm volatile ("in %1, %0" : "=a" (rv) : "dN" (port));
+	asm volatile ("inw %1, %0" : "=a" (rv) : "dN" (port));
 	return rv;
 }
 
-u8 in_32(u16 port) {
+u32 in_32(u16 port) {
 	u32 rv;
-	asm volatile ("inl %1, %0" : "=a" (rv) : "dN" (port));
+	asm volatile ("inl %%dx, %%eax" : "=a" (rv) : "dN" (port));
 	return rv;
 }
 

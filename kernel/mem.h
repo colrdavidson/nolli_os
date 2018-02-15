@@ -91,7 +91,7 @@ void *alloc_pages(u32 pages) {
 	return NULL;
 }
 
-void *malloc(u32 size) {
+void *kmalloc(u32 size) {
 	u32 pages = (size / 0x1000) + 1;
 	void *addr = alloc_pages(pages);
 	return addr;
