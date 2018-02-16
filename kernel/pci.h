@@ -32,7 +32,7 @@ void print_devices() {
 	}
 }
 
-u16 pci_read_word(u32 bus, u32 device, u32 func, u32 offset) {
+u32 pci_read_word(u32 bus, u32 device, u32 func, u32 offset) {
    	u32 address = PCI_BASE_ADDR | bus << 16 | device << 11 | func << 8 | offset;
 	out_32(0xCF8, address);
 	return in_32(0xCFC);
@@ -44,12 +44,11 @@ bool pci_check_device(PCI_dev **cur, u32 bus, u32 device) {
 	if (vendor_id == PCI_NONE) return false;
 	u16 device_id = pci_read_word(bus, device, func, 2);
 
-	u16 class = pci_read_word(bus, device, func, 0xA);
-	u16 prog = pci_read_word(bus, device, func, 0x8);
-	u8 class_code = (class << 8) >> 8;
-	u8 subclass = class >> 8;
-	u8 prog_IF = (prog << 8) >> 8;
-	u8 revision = prog >> 8;
+	u32 class_blob = pci_read_word(bus, device, func, 0x8);
+	u8 class_code = class_blob >> 24;
+	u8 subclass = (class_blob << 8) >> 24;
+	u8 prog_IF = (class_blob >> 16) >> 24;
+	u8 revision = (class_blob << 24) >> 24;
 
 	PCI_dev *tmp = (PCI_dev *)kmalloc(sizeof(PCI_dev));
 	tmp->vendor_id = vendor_id;
@@ -79,43 +78,6 @@ void pci_read_devices() {
 	}
 
 	print_devices();
-}
-
-u32 pci_get_bus(u32 device) {
-	return (u8)(device >> 16);
-}
-
-u32 pci_get_slot(u32 device) {
-	return (u8)(device >> 8);
-}
-
-u32 pci_get_func(u32 device) {
-	return (u8)device;
-}
-
-u32 pci_get_addr(u32 device, i32 field) {
-	return PCI_BASE_ADDR | pci_get_bus(device) << 16 | pci_get_slot(device) << 1 | pci_get_func(device) << 8 | ((field) & 0xFC);
-}
-
-u32 pci_box_device(i32 bus, i32 slot, i32 func) {
-	return (u32)(bus << 16 | slot << 8 | func);
-}
-
-u32 pci_read_field(u32 device, u32 field, u32 size) {
-	out_32(PCI_ADDR_PORT, pci_get_addr(device, field));
-
-	if (size == 4) {
-		u32 t = in_32(PCI_VALUE_PORT);
-		return t;
-	} else if (size == 2) {
-		u16 t = in_16(PCI_VALUE_PORT + (field & 2));
-		return t;
-	} else if (size == 1) {
-		u8 t = inb(PCI_VALUE_PORT + (field & 3));
-		return t;
-	}
-
-	return 0xFFFF;
 }
 
 #endif
