@@ -53,8 +53,13 @@ u32 read_eeprom(u8 addr) {
 void read_mac_addr() {
 	u8 mac[6];
 
+	u32 mac_addr_32 = ((u32 *)(mem_base + 0x5400))[0];
+	u16 mac_addr_16 = ((u16 *)(mem_base + 0x5400))[3];
+	printf("Backwards Address? %x%x\n", mac_addr_16, mac_addr_32);
+
+	puts("Broken?");
 	u8 *mac_addr = (u8 *)(mem_base + 0x5400);
-	for (i32 i = 0; i < 6; i++) {
+	for (i32 i = 0; i < 6; ++i) {
 		mac[i] = mac_addr[i];
 	}
 
