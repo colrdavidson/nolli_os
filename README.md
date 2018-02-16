@@ -4,7 +4,7 @@ A simple, light-hearted Bootloader/OS
 ## Dependencies
 + nasm
 + clang
-+ ld (needs to be changed in the build script per user)
++ ld (this is specified in the build.sh, may need to be built with x-tools)
 + dd
 + qemu
 
@@ -14,3 +14,4 @@ A simple, light-hearted Bootloader/OS
 
 ![Nolli's Boot Screen](img/boot.png)
 ![Nolli's Kernel Boot](img/kernboot.png)
+![QEMU PCI Device List](img/pci_list.png)

@@ -35,11 +35,11 @@ typedef struct PCI_dev {
 PCI_dev *devices;
 
 void print_devices() {
-	PCI_dev *tmp = devices;
+	PCI_dev *tmp = devices->next;
 	printf("Listing PCI devices\n");
 	while (tmp != NULL) {
-		printf("vendor: %p, device: %p | [%p | %p | %p] rev: %p\n", tmp->vendor_id, tmp->device_id, tmp->class_code, tmp->subclass, tmp->prog_IF, tmp->revision);
-		printf("BARs: [%p, %p, %p, %p, %p, %p]\n", tmp->bar_0, tmp->bar_1, tmp->bar_2, tmp->bar_3, tmp->bar_4, tmp->bar_5);
+		printf("vendor: %p, device: %p\n[%p | %p | %p] rev: %p\n", tmp->vendor_id, tmp->device_id, tmp->class_code, tmp->subclass, tmp->prog_IF, tmp->revision);
+		printf("[%x, %x, %x, %x, %x, %x]\n\n", tmp->bar_0, tmp->bar_1, tmp->bar_2, tmp->bar_3, tmp->bar_4, tmp->bar_5);
 		tmp = tmp->next;
 	}
 }
