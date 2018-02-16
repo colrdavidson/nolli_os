@@ -22,8 +22,8 @@ u16 mem_map_size;
 u32 *page_dir;
 u32 first_hole;
 
-extern u32 _kernel_start;
-extern u32 _kernel_end;
+extern void *_kernel_start;
+extern void *_kernel_end;
 
 u32 set_bit(u32 map, u8 nbit) {
 	return map | (1 << nbit);
@@ -43,6 +43,10 @@ i32 index_of(u32 i) {
 
 i32 offset_from(u32 i) {
 	return i % (sizeof(u32) * 8);
+}
+
+u32 page_align(u32 i) {
+	return i + 0x1000 - (i % 0x1000);
 }
 
 void print_bitset(u32 idx) {
@@ -84,7 +88,8 @@ void *alloc_pages(u32 pages) {
 			for (u32 j = run_start; j <= i; j++) {
 				memory[index_of(j)] = set_bit(memory[index_of(j)], offset_from(j));
 			}
-			return (void *)(run_start * 0x10);
+
+			return (void *)(run_start * 0x1000);
 		}
 	}
 
@@ -94,6 +99,7 @@ void *alloc_pages(u32 pages) {
 void *kmalloc(u32 size) {
 	u32 pages = (size / 0x1000) + 1;
 	void *addr = alloc_pages(pages);
+	//printf("addr: %p\n", addr);
 	return addr;
 }
 
@@ -114,8 +120,6 @@ void print_map() {
 		} else {
 			printf("mem_map[%d] type: Usable\n", entry);
 		}
-
-		puts("");
 	}
 }
 
@@ -126,8 +130,8 @@ u32 new_pde() {
 }
 
 void map_page(u32 *cur_page_dir, u32 v_addr, u32 p_addr) {
-	u32 pd_idx = v_addr >> 21;
-	u32 pt_idx = (v_addr << 10) >> 22;
+	u32 pd_idx = v_addr >> 22;
+	u32 pt_idx = (v_addr >> 12) & 0x3FF;
 	explode_if(((v_addr << 20) >> 20) != 0);
 
 	u32 *page_table = (u32 *)((cur_page_dir[pd_idx] >> 2) << 2);
@@ -135,15 +139,20 @@ void map_page(u32 *cur_page_dir, u32 v_addr, u32 p_addr) {
 }
 
 void unmap_page(u32 *cur_page_dir, u32 v_addr) {
-	u32 pd_idx = v_addr >> 21;
-	u32 pt_idx = (v_addr << 10) >> 22;
+	u32 pd_idx = v_addr >> 22;
+	u32 pt_idx = (v_addr >> 12) & 0x3FF;
 	explode_if(((v_addr << 20) >> 20) != 0);
 
 	u32 *page_table = (u32 *)((cur_page_dir[pd_idx] >> 2) << 2);
+	printf("[%p] = %p\n", pt_idx, page_table[pt_idx]);
 	page_table[pt_idx] = 2;
 }
 
 void init_mem() {
+	u32 kstart = (u32)&_kernel_start;
+	u32 kend = (u32)&_kernel_end;
+	u32 ksize = kend - kstart;
+
 	memory_size = (mem_map[mem_map_size - 1].base + mem_map[mem_map_size - 1].size);
 	bitmap_size = memory_size / 0x1000;
 
@@ -190,11 +199,50 @@ void init_mem() {
 	page_dir[1023] = ((u32)page_dir & ~0xFFF) | 1;
 
 	// Identity map the everything
-	i = 0;
-	for (; i < (memory_size / 0x1000); i++) {
+	for (i = 0; i < (memory_size / 0x1000); i++) {
 		u32 addr = i * 0x1000;
 		map_page(page_dir, addr, addr);
 	}
+
+	/*
+	// Remap the kernel to the higher half
+	i = page_align(kstart);
+	j = page_align(0x7FE0000 - ksize);
+
+	while (i < kend) {
+		unmap_page(page_dir, i);
+		map_page(page_dir, j, i);
+		i += 0x1000;
+		j += 0x1000;
+	}
+
+	u32 k_page_s = kstart / 0x1000;
+	u32 k_page_e = kend / 0x1000;
+	printf("%d -> %d\n", k_page_s, k_page_e);
+	for (i = k_page_s; i < k_page_e; i++) {
+		printf("page_dir[%p]: %p\n", i, page_dir[i]);
+		u32 *page_table = (u32 *)((page_dir[i] >> 2) << 2);
+		for (j = 0; j < 1; j++) {
+			printf("    page_tab[%p]: %p\n", j, page_table[j]);
+		}
+	}
+
+	kstart = 0x7FE0000;
+	kend = kstart + ksize;
+
+	*/
+
+	/*
+	// Move ACPI to 1 MB below the kernel
+	i = 0;
+	j = page_align(kstart - 0xFFFFF); // Kernel space - 1 MB
+	while (i < 0x3E8000) {
+		map_page(page_dir, j, i);
+		unmap_page(page_dir, i);
+		i += 0x1000;
+		j += 0x1000;
+	}
+	*/
 
 	// Enable paging
 	u32 cr0;
@@ -202,30 +250,6 @@ void init_mem() {
 	asm volatile("mov %%cr0, %0": "=r"(cr0));
 	cr0 |= 1 << 31;
 	asm volatile("mov %0, %%cr0":: "r"(cr0));
-
-	u32 kstart = 0x7000;
-	u32 ksize = 0xD00;
-
-	// Remap the kernel to the higher half
-	i = kstart;
-	j = 0xC0000000;
-	while (i < ksize) {
-		map_page(page_dir, j, i);
-		unmap_page(page_dir, i);
-		i += 0x1000;
-		j += 0x1000;
-	}
-
-	// Move ACPI to 1 MB below the kernel
-	// Also, freed the 0th page, so null works
-	i = 0;
-	j = 0xBFC18000; // Kernel space - 1 MB
-	while (i < 0x3E8000) {
-		map_page(page_dir, j, i);
-		unmap_page(page_dir, i);
-		i += 0x1000;
-		j += 0x1000;
-	}
 
 	puts("Set up paging and remapped the kernel!\n");
 }

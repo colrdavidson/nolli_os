@@ -40,9 +40,9 @@ void scroll() {
 	}
 }
 
-void putc(char c) {
+void _putc(char c, char color) {
 	if (c >= ' ') {
-		vga_mem[translate(x_pos, y_pos)] = (0x07 << 8) | c;
+		vga_mem[translate(x_pos, y_pos)] = (color << 8) | c;
 		x_pos++;
 	} else if (c == '\n') {
 		x_pos = 0;
@@ -56,12 +56,12 @@ void putc(char c) {
 				x_pos = VGA_WIDTH - 1;
 			}
 		}
-		vga_mem[translate(x_pos, y_pos)] = (0x07 << 8) | ' ';
+		vga_mem[translate(x_pos, y_pos)] = (color << 8) | ' ';
 	} else if (c == '\t') {
-		putc(' ');
-		putc(' ');
-		putc(' ');
-		putc(' ');
+		_putc(' ', color);
+		_putc(' ', color);
+		_putc(' ', color);
+		_putc(' ', color);
 	}
 
 	if (x_pos >= VGA_WIDTH) {
@@ -70,33 +70,29 @@ void putc(char c) {
 	}
 
 	scroll();
+}
+
+void putc(char c) {
+	_putc(c, 0x7);
 	update_cursor();
 }
 
+void aputc(char c) {
+	_putc(c, 0x7);
+}
+
 void putco(char c, char color) {
-	if (c >= ' ') {
-		vga_mem[translate(x_pos, y_pos)] = (color << 8) | c;
-		x_pos++;
-	} else if (c == '\n') {
-		x_pos = 0;
-		y_pos++;
-	}
-
-	if (x_pos >= VGA_WIDTH) {
-		x_pos = 0;
-		y_pos++;
-	}
-
-	scroll();
+	_putc(c, color);
 	update_cursor();
 }
 
 void print(const char *str) {
 	u32 len = 0;
 	while(str[len] != 0) {
-		putc(str[len]);
+		aputc(str[len]);
 		len++;
 	}
+	update_cursor();
 }
 
 void puts(const char *str) {
@@ -118,11 +114,12 @@ void put_name() {
 void clear_screen() {
 	for (u32 x = 0; x < VGA_WIDTH; x++) {
 		for (u32 y = 0; y < VGA_HEIGHT; y++) {
-			putc(' ');
+			aputc(' ');
 		}
 	}
 	x_pos = 0;
 	y_pos = 0;
+	update_cursor();
 }
 
 void putn(u32 i, u8 base) {
@@ -141,7 +138,7 @@ void printf(char *fmt, ...) {
 
 	for (char *c = fmt; *c != 0; c++) {
 		if (*c != '%') {
-			putc(*c);
+			aputc(*c);
 			continue;
 		}
 
@@ -149,7 +146,7 @@ void printf(char *fmt, ...) {
 		switch (*c) {
 			case 'c': {
 				char i = __builtin_va_arg(args, int);
-				putc(i);
+				aputc(i);
 			} break;
 			case 's': {
 				char *s = __builtin_va_arg(args, char *);
@@ -169,8 +166,8 @@ void printf(char *fmt, ...) {
 			} break;
 			case 'p': {
 				i32 i = __builtin_va_arg(args, int);
-				putc('0');
-				putc('x');
+				aputc('0');
+				aputc('x');
 				putn(i, 16);
 			} break;
 			case 'n': {
@@ -179,6 +176,7 @@ void printf(char *fmt, ...) {
 		}
 	}
 
+	update_cursor();
 	__builtin_va_end(args);
 }
 

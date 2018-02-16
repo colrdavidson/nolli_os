@@ -79,7 +79,7 @@ read_msg_size: equ $-read_msg
 disk_addr_packet:
 	.size:   db 0xFF
 	._rsv:   db 0
-	.blocks: dw 0x30
+	.blocks: dw 0x40
 	.dest:   dd 0x7E00
 	.lba:    dq 1
 
