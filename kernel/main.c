@@ -4,6 +4,7 @@
 #include "isr.h"
 #include "idt.h"
 #include "pci.h"
+#include "eth.h"
 
 void kmain() {
 	clear_screen();
@@ -16,6 +17,8 @@ void kmain() {
     asm ("sti");
 
 	pci_read_devices();
+	PCI_dev *eth_dev = hook_device(0x8086, 0x100E);
+	init_eth(eth_dev);
 
 	for (;;) {
 		asm ("hlt");

@@ -254,4 +254,12 @@ void init_mem() {
 	puts("Set up paging and remapped the kernel!\n");
 }
 
+void flush_page_tables(void) {
+	asm volatile (
+		"movl %%cr3, %%eax\n"
+		"movl %%eax, %%cr3\n"
+		::: "%eax"
+	);
+}
+
 #endif
