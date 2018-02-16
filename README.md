@@ -13,5 +13,4 @@ A simple, light-hearted Bootloader/OS
 3. Sheer joy
 
 ![Nolli's Boot Screen](img/boot.png)
-![Nolli's Kernel Boot](img/kernboot.png)
 ![QEMU PCI Device List](img/pci_list.png)
