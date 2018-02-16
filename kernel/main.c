@@ -10,8 +10,6 @@ void kmain() {
 	printf("Good news everyone!\n");
 	printf("The %n kernel says hello!\n\n");
 
-    print_map();
-
 	init_idt();
 	init_mem();
 
