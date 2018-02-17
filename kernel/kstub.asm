@@ -90,6 +90,18 @@ start32:
 	call kmain
 	jmp superbye
 
+global get_eip
+get_eip:
+	push ebp
+	mov ebp, esp
+
+	call get_eip.eip
+.eip:
+	pop eax
+
+	pop ebp
+	ret
+
 superbye:
 	cli
 	hlt

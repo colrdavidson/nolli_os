@@ -15,6 +15,7 @@
 #define PCI_BAR3 0x1C
 #define PCI_BAR4 0x20
 #define PCI_BAR5 0x24
+#define PCI_INTERRUPT_LINE 0x3C
 #define PCI_NONE 0xFFFF
 
 typedef struct PCI_dev {
@@ -28,6 +29,7 @@ typedef struct PCI_dev {
 	u8 prog_IF;
 	u8 revision;
 	u32 bar[6];
+	u8 irq;
 	struct PCI_dev *next;
 } PCI_dev;
 
@@ -39,6 +41,7 @@ void print_devices() {
 	while (tmp != NULL) {
 		printf("\nvendor: %p, device: %p\n[%p | %p | %p] rev: %p\n", tmp->vendor_id, tmp->device_id, tmp->class_code, tmp->subclass, tmp->prog_IF, tmp->revision);
 		printf("[%x, %x, %x, %x, %x, %x]\n", tmp->bar[0], tmp->bar[1], tmp->bar[2], tmp->bar[3], tmp->bar[4], tmp->bar[5]);
+		printf("irq: %d\n", tmp->irq);
 		tmp = tmp->next;
 	}
 }
@@ -53,6 +56,14 @@ void pci_write_dword(u32 bus, u32 device, u32 func, u32 offset, u32 value) {
    	u32 address = PCI_BASE_ADDR | bus << 16 | device << 11 | func << 8 | offset;
 	out_32(PCI_ADDR_PORT, address);
 	out_32(PCI_VALUE_PORT, value);
+}
+
+u32 pci_read_field(PCI_dev *p_dev, u32 type) {
+	return pci_read_dword(p_dev->bus, p_dev->dev, p_dev->func, type);
+}
+
+void pci_write_field(PCI_dev *p_dev, u32 type, u32 value) {
+	pci_write_dword(p_dev->bus, p_dev->dev, p_dev->func, type, value);
 }
 
 bool pci_check_device(PCI_dev **cur, u32 bus, u32 device) {
@@ -75,6 +86,7 @@ bool pci_check_device(PCI_dev **cur, u32 bus, u32 device) {
 	u32 bar_3 = pci_read_dword(bus, device, func, PCI_BAR3);
 	u32 bar_4 = pci_read_dword(bus, device, func, PCI_BAR4);
 	u32 bar_5 = pci_read_dword(bus, device, func, PCI_BAR5);
+	u8 irq = pci_read_dword(bus, device, func, PCI_INTERRUPT_LINE);
 
 	PCI_dev *tmp = (PCI_dev *)kmalloc(sizeof(PCI_dev));
 	tmp->vendor_id = vendor_id;
@@ -94,6 +106,8 @@ bool pci_check_device(PCI_dev **cur, u32 bus, u32 device) {
 	tmp->bar[3] = bar_3;
 	tmp->bar[4] = bar_4;
 	tmp->bar[5] = bar_5;
+
+	tmp->irq = irq;
 
 	tmp->next = NULL;
 

@@ -20,30 +20,38 @@ char to_upper(char c) {
 	return c - 32;
 }
 
+void page_fault_handler(registers_t reg) {
+	printf("page fault!\n");
+	u8 fault_type = (reg.err_code << 4) >> 4;
+
+	if (fault_type & 0b0001) {
+		printf("page not present\n");
+	} else {
+		printf("page protection violation\n");
+	}
+
+	if (fault_type & 0b0010) {
+		printf("fault on write\n");
+	} else {
+		printf("fault on read\n");
+	}
+
+	asm ("hlt");
+}
+
 void isr_handler(registers_t reg) {
-	printf("Got interrupt %p: ", reg.int_no);
-
-	if (reg.int_no == 0xE) {
-		printf("page fault!\n");
-		u8 fault_type = (reg.err_code << 4) >> 4;
-
-		if (fault_type & 0b0001) {
-			printf("page not present\n");
-		} else {
-			printf("page protection violation\n");
+	switch (reg.int_no) {
+		case 0xE: {
+			page_fault_handler(reg);
+		} break;
+		default: {
+			printf("Got interrupt %p: ", reg.int_no);
 		}
-
-		if (fault_type & 0b0010) {
-			printf("fault on write\n");
-		} else {
-			printf("fault on read\n");
-		}
-		asm ("hlt");
 	}
 }
 
-void irq_handler(registers_t reg) {
-    u8 scan_code = inb(0x60);
+void keyboard_handler(registers_t reg) {
+    u8 scan_code = in_8(0x60);
 	if (scan_code & 0x80) {
 		if (scan_code == 170) {
 			shifting = false;
@@ -71,11 +79,24 @@ void irq_handler(registers_t reg) {
 		}
 		putc(c);
 	}
+}
 
+void irq_handler(registers_t reg) {
+	switch (reg.int_no) {
+		case 0x0: {
+			live_ticks += 1;
+		} break;
+		case 0x1: {
+			keyboard_handler(reg);
+		} break;
+		default: {
+			printf("Got interrupt %p: ", reg.int_no);
+		}
+	}
 
-	outb(0x20, 0x20);
+	out_8(0x20, 0x20);
 	if(reg.int_no >= 8) {
-		outb(0xA0, 0x20);
+		out_8(0xA0, 0x20);
 	}
 }
 

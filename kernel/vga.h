@@ -19,10 +19,10 @@ u32 translate(u32 x, u32 y) {
 
 void update_cursor() {
 	u16 cur_pos = translate(x_pos, y_pos);
-	outb(0x3D4, 14);
-	outb(0x3D5, cur_pos >> 8);
-	outb(0x3D4, 15);
-	outb(0x3D5, cur_pos);
+	out_8(0x3D4, 14);
+	out_8(0x3D5, cur_pos >> 8);
+	out_8(0x3D4, 15);
+	out_8(0x3D5, cur_pos);
 }
 
 void scroll() {
@@ -153,19 +153,19 @@ void printf(char *fmt, ...) {
 				print(s);
 			} break;
 			case 'd': {
-				i32 i = __builtin_va_arg(args, int);
+				s32 i = __builtin_va_arg(args, int);
 				putn(i, 10);
 			} break;
 			case 'x': {
-				i32 i = __builtin_va_arg(args, int);
+				s32 i = __builtin_va_arg(args, int);
 				putn(i, 16);
 			} break;
 			case 'b': {
-				i32 i = __builtin_va_arg(args, int);
+				s32 i = __builtin_va_arg(args, int);
 				putn(i, 2);
 			} break;
 			case 'p': {
-				i32 i = __builtin_va_arg(args, int);
+				s32 i = __builtin_va_arg(args, int);
 				aputc('0');
 				aputc('x');
 				putn(i, 16);

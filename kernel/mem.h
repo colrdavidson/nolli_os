@@ -33,15 +33,15 @@ u32 clear_bit(u32 map, u8 nbit) {
 	return map ^ (1 << nbit);
 }
 
-i32 is_set(u32 map, u8 nbit) {
+s32 is_set(u32 map, u8 nbit) {
 	return !!(map & (1 << nbit));
 }
 
-i32 index_of(u32 i) {
+s32 index_of(u32 i) {
 	return i / (sizeof(u32) * 8);
 }
 
-i32 offset_from(u32 i) {
+s32 offset_from(u32 i) {
 	return i % (sizeof(u32) * 8);
 }
 
@@ -99,11 +99,10 @@ void *alloc_pages(u32 pages) {
 void *kmalloc(u32 size) {
 	u32 pages = (size / 0x1000) + 1;
 	void *addr = alloc_pages(pages);
-	//printf("addr: %p\n", addr);
 	return addr;
 }
 
-void free(void *addr, u32 size) {
+void kfree(void *addr, u32 size) {
 	u32 iaddr = (u32)addr / 0x1000;
 	for (u32 i = iaddr; i < (iaddr + size); i++) {
 		memory[index_of(i)] = clear_bit(memory[index_of(i)], offset_from(i));
@@ -144,7 +143,6 @@ void unmap_page(u32 *cur_page_dir, u32 v_addr) {
 	explode_if(((v_addr << 20) >> 20) != 0);
 
 	u32 *page_table = (u32 *)((cur_page_dir[pd_idx] >> 2) << 2);
-	printf("[%p] = %p\n", pt_idx, page_table[pt_idx]);
 	page_table[pt_idx] = 2;
 }
 
@@ -204,13 +202,15 @@ void init_mem() {
 		map_page(page_dir, addr, addr);
 	}
 
+    unmap_page(page_dir, 0);
+
 	/*
 	// Remap the kernel to the higher half
 	i = page_align(kstart);
 	j = page_align(0x7FE0000 - ksize);
 
 	while (i < kend) {
-		unmap_page(page_dir, i);
+		//unmap_page(page_dir, i);
 		map_page(page_dir, j, i);
 		i += 0x1000;
 		j += 0x1000;
@@ -229,7 +229,6 @@ void init_mem() {
 
 	kstart = 0x7FE0000;
 	kend = kstart + ksize;
-
 	*/
 
 	/*

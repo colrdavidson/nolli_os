@@ -8,13 +8,14 @@
 
 void kmain() {
 	clear_screen();
+
 	printf("Good news everyone!\n");
 	printf("The %n kernel says hello!\n\n");
 
 	init_idt();
-	init_mem();
-
     asm ("sti");
+
+	init_mem();
 
 	pci_read_devices();
 	PCI_dev *eth_dev = hook_device(0x8086, 0x100E);

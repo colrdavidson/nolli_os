@@ -6,24 +6,24 @@
 #define PORT 0x3f8
 
 void init_serial() {
-	outb(PORT + 1, 0x00);
-	outb(PORT + 3, 0x80);
-	outb(PORT + 0, 0x03);
-	outb(PORT + 1, 0x00);
-	outb(PORT + 3, 0x03);
-	outb(PORT + 2, 0xC7);
-	outb(PORT + 4, 0x0B);
+	out_8(PORT + 1, 0x00);
+	out_8(PORT + 3, 0x80);
+	out_8(PORT + 0, 0x03);
+	out_8(PORT + 1, 0x00);
+	out_8(PORT + 3, 0x03);
+	out_8(PORT + 2, 0xC7);
+	out_8(PORT + 4, 0x0B);
 
 	//sputs("\x1b[33m"); Make serial output orange/yellow
 }
 
-i32 is_transmit_empty() {
-	return inb(PORT + 5) & 0x20;
+s32 is_transmit_empty() {
+	return in_8(PORT + 5) & 0x20;
 }
 
 void sputc(char c) {
 	while (is_transmit_empty() == 0);
-	outb(PORT, c);
+	out_8(PORT, c);
 }
 
 void sprint(const char *str) {
@@ -39,7 +39,7 @@ void sputs(const char *str) {
 	sputc('\n');
 }
 
-void sputn(i32 i, u8 base) {
+void sputn(s32 i, u8 base) {
 	char tbuf[32];
 	char *buf = tbuf;
 
@@ -74,19 +74,19 @@ void sprintf(char *fmt, ...) {
 				sprint(s);
 			} break;
 			case 'd': {
-				i32 i = __builtin_va_arg(args, int);
+				s32 i = __builtin_va_arg(args, int);
 				sputn(i, 10);
 			} break;
 			case 'x': {
-				i32 i = __builtin_va_arg(args, int);
+				s32 i = __builtin_va_arg(args, int);
 				sputn(i, 16);
 			} break;
 			case 'b': {
-				i32 i = __builtin_va_arg(args, int);
+				s32 i = __builtin_va_arg(args, int);
 				sputn(i, 2);
 			} break;
 			case 'p': {
-				i32 i = __builtin_va_arg(args, int);
+				s32 i = __builtin_va_arg(args, int);
 				sputc('0');
 				sputc('x');
 				sputn(i, 16);
